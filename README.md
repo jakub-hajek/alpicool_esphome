@@ -55,12 +55,22 @@ Dual-zone entities will simply not receive updates if your fridge is single-zone
 
 ## Installation
 
-### Step 1: Clone the Repository
+### Step 1: Create Your Project
+
+Create a new directory for your ESPHome configuration:
 
 ```bash
-git clone https://github.com/your-username/alpicool_esphome.git
-cd alpicool_esphome
+mkdir alpicool-fridge && cd alpicool-fridge
 ```
+
+Download the example config files:
+
+```bash
+curl -O https://raw.githubusercontent.com/jakub-hajek/alpicool_esphome/main/alpicool.yaml
+curl -O https://raw.githubusercontent.com/jakub-hajek/alpicool_esphome/main/secrets.yaml.example
+```
+
+The component code is pulled automatically from GitHub by ESPHome during compilation -- no need to clone the full repository.
 
 ### Step 2: Find Your Fridge's MAC Address
 
@@ -200,8 +210,10 @@ captive_portal:
 
 external_components:
   - source:
-      type: local
-      path: components
+      type: git
+      url: https://github.com/jakub-hajek/alpicool_esphome
+      ref: main
+    components: [alpicool]
 
 esp32_ble_tracker:
 
@@ -346,14 +358,15 @@ esp32:
 
 ## Project Structure
 
+### Repository (GitHub)
+
 ```
 alpicool_esphome/
-├── alpicool.yaml              # Main ESPHome device configuration
+├── alpicool.yaml              # Example ESPHome device configuration
 ├── secrets.yaml.example       # Template for WiFi/API credentials
-├── secrets.yaml               # Your credentials (git-ignored)
 ├── README.md
 └── components/
-    └── alpicool/
+    └── alpicool/              # Custom component (fetched automatically by ESPHome)
         ├── __init__.py        # Component hub (BLE client node registration)
         ├── sensor.py          # Sensor platform (temperatures, voltage)
         ├── binary_sensor.py   # Binary sensor platform (connected, running)
@@ -361,6 +374,16 @@ alpicool_esphome/
         ├── number.py          # Number platform (target temperature controls)
         ├── alpicool.h         # C++ header (protocol structs, class definition)
         └── alpicool.cpp       # C++ implementation (BLE communication, parsing)
+```
+
+### Your Local Setup
+
+You only need two files locally. The component is downloaded from GitHub automatically during compilation:
+
+```
+your-project/
+├── alpicool.yaml              # Your device configuration
+└── secrets.yaml               # Your credentials (not committed)
 ```
 
 ## How It Works
@@ -430,7 +453,7 @@ BLE and WiFi share the same radio on the ESP32. The `esp-idf` framework handles 
 
 - Ensure you're using ESPHome 2024.2.0 or newer.
 - The `esp-idf` framework is required. Arduino framework is not supported.
-- Check that the `components/` directory is in the same folder as your YAML file.
+- Verify the `external_components` section in your YAML points to the correct GitHub URL and branch.
 
 ## Acknowledgments
 
