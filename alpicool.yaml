@@ -1,0 +1,158 @@
+substitutions:
+  name: alpicool-fridge
+  friendly_name: "Alpicool Fridge"
+  # Replace with your fridge's BLE MAC address
+  # Look for devices named A1-*, AK1-*, AK2-*, or AK3-*
+  fridge_mac: "XX:XX:XX:XX:XX:XX"
+  # MQTT topic prefix (used when MQTT is enabled)
+  mqtt_topic: "alpicool"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${name} Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+# --- Optional MQTT ---
+# Uncomment the block below to publish all sensor data to an MQTT broker.
+# The native Home Assistant API above will continue to work alongside MQTT.
+# To use MQTT *instead* of the native API, comment out the api: section above.
+#
+# mqtt:
+#   broker: !secret mqtt_broker
+#   port: 1883
+#   username: !secret mqtt_username
+#   password: !secret mqtt_password
+#   topic_prefix: ${mqtt_topic}
+#   # Publish a JSON payload with all sensor values on every update
+#   on_message:
+#     # Allows controlling the fridge via MQTT commands (see README)
+#     - topic: ${mqtt_topic}/cmd/power
+#       then:
+#         - lambda: |-
+#             if (x == "ON") {
+#               id(alpicool_power).turn_on();
+#             } else if (x == "OFF") {
+#               id(alpicool_power).turn_off();
+#             }
+#     - topic: ${mqtt_topic}/cmd/eco
+#       then:
+#         - lambda: |-
+#             if (x == "ON") {
+#               id(alpicool_eco).turn_on();
+#             } else if (x == "OFF") {
+#               id(alpicool_eco).turn_off();
+#             }
+#     - topic: ${mqtt_topic}/cmd/set_temperature
+#       then:
+#         - lambda: |-
+#             auto val = parse_number<float>(x);
+#             if (val.has_value()) {
+#               auto call = id(alpicool_set_temp).make_call();
+#               call.set_value(val.value());
+#               call.perform();
+#             }
+#     - topic: ${mqtt_topic}/cmd/set_right_temperature
+#       then:
+#         - lambda: |-
+#             auto val = parse_number<float>(x);
+#             if (val.has_value()) {
+#               auto call = id(alpicool_set_right_temp).make_call();
+#               call.set_value(val.value());
+#               call.perform();
+#             }
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1000ms
+    window: 500ms
+    active: true
+
+ble_client:
+  - mac_address: ${fridge_mac}
+    id: alpicool_ble
+
+alpicool:
+  id: alpicool_device
+  ble_client_id: alpicool_ble
+  update_interval: 2s
+
+sensor:
+  - platform: alpicool
+    alpicool_id: alpicool_device
+    current_temperature:
+      name: "Current Temperature"
+      id: alpicool_current_temp
+    target_temperature:
+      name: "Target Temperature"
+      id: alpicool_target_temp
+    input_voltage:
+      name: "Input Voltage"
+      id: alpicool_voltage
+    # Dual-zone only (ignored if single-zone fridge)
+    right_current_temperature:
+      name: "Right Current Temperature"
+      id: alpicool_right_current_temp
+    right_target_temperature:
+      name: "Right Target Temperature"
+      id: alpicool_right_target_temp
+
+binary_sensor:
+  - platform: alpicool
+    alpicool_id: alpicool_device
+    connected:
+      name: "Connected"
+      id: alpicool_connected
+    # Dual-zone only (compressor running status)
+    running:
+      name: "Compressor Running"
+      id: alpicool_running
+
+switch:
+  - platform: alpicool
+    alpicool_id: alpicool_device
+    power:
+      name: "Power"
+      id: alpicool_power
+    eco_mode:
+      name: "Eco Mode"
+      id: alpicool_eco
+
+number:
+  - platform: alpicool
+    alpicool_id: alpicool_device
+    target_temperature:
+      name: "Set Temperature"
+      id: alpicool_set_temp
+    # Dual-zone only
+    right_target_temperature:
+      name: "Set Right Temperature"
+      id: alpicool_set_right_temp
